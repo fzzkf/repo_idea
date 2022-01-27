@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.lagou.dao.UserMapper">
+    <!-- 用户分页以及多条件查询 -->
+    <select id="findAllUserByPage" parameterType="UserVO" resultType="User">
+        select * from user
+        <where>
+            <if test="true">
+                and is_del != 1
+            </if>
+            <if test="username != null and username != ''">
+                and name = #{username}
+            </if>
+            <if test="startCreateTime != null and endCreateTime != null">
+                and create_time between #{startCreateTime} and #{endCreateTime}
+            </if>
+        </where>
+    </select>
+
+    <!-- 改变用户状态 -->
+    <update id="updateUserStatus" parameterType="User">
+        update user set status = #{status} where id = #{id}
+    </update>
+
+    <!-- 用户登录：根据用户名查询具体用户信息 -->
+    <select id="login" parameterType="User" resultType="User">
+        select * from user where phone = #{phone}
+    </select>
+
+    <!-- 根据用户id查询关联的角色信息 -->
+    <select id="findUserRelationRoleById" parameterType="int" resultType="Role">
+        select * from roles r inner join user_role_relation ur on r.id=ur.role_id where ur.user_id = #{id}
+    </select>
+
+    <!-- 根据用户id清空中间表 -->
+    <delete id="deleteUserContextRole" parameterType="int">
+        delete from user_role_relation where user_id = #{userid}
+    </delete>
+
+    <!-- 分配角色 -->
+    <insert id="userContextRole" parameterType="User_Role_relation">
+        insert into user_role_relation values(null,#{userId},#{roleId},#{createdTime},#{updatedTime},#{createdBy},#{updatedby})
+    </insert>
+
+    <!-- 2.genjujueseid查询角色所拥有的顶级菜单 -->
+    <select id="findParentMenuByRoleId" parameterType="java.util.List" resultType="Menu">
+        SELECT DISTINCT m.*
+        FROM roles r INNER JOIN role_menu_relation rm ON r.id = rm.role_id
+        INNER JOIN menu m ON rm.menu_id = m.id
+        WHERE m.parent_id = -1 AND r.id IN
+        <foreach collection="list" item="item" open="(" close=")" separator=",">
+            #{item}
+        </foreach>
+    </select>
+
+    <!-- 3.根据pid查询子菜单信息 -->
+    <select id="findSubMenuByPid" parameterType="int" resultType="Menu">
+        select * from menu where parent_id = #{id}
+    </select>
+
+    <!-- 4.获取用户所拥有的资源权限信息 -->
+    <select id="findResourceByRoleId" parameterType="java.util.List" resultType="Resource">
+        select r.*
+        from resource r inner join role_resource_relation rr on r.id = rr.resource_id
+                        inner join roles ro on ro.id = rr.role_id
+        where ro.id in
+        <foreach collection="list" item="id" open="(" close=")" separator=",">
+            #{id}
+        </foreach>
+    </select>
+</mapper>
